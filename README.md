@@ -1,7 +1,7 @@
 # PyFanta
 ## The PyFanta Repository
 
-This bot is an automated Fantasy Football player list generator with statistics for Serie A.
+This bot is an automated Fantasy Football player list generator with statistics for Serie A (mostly taken from *La Gazzetta dello Sport* -> *gazzetta.it*).
 
 *It will be assumed that have already installed [**Python 3**](https://www.python.org/downloads/) on your PC.*
 

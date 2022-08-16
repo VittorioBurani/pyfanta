@@ -1,4 +1,7 @@
+import numpy as np
 import pandas as pd
+import argparse
+import sqlite3
 
 sheet_id = '1-aqSXdI8ErfIp9mEe6K_FZ7HgzLw47-dUVHlzGpIq6k'
 
@@ -134,6 +137,18 @@ def dataframe_fantacalcio():
     attaccanti = stats_fantacalcio[(stats_fantacalcio['Ruolo'] == 'A') | (stats_fantacalcio['Ruolo'] == 'T (A)')]
     attaccanti = attaccanti.sort_values(by='MFV', ascending=False)
     attaccanti.to_excel('fantastats/attaccanti_fantacalcio.xlsx', index=False)
+
+
+# Arguments parser:
+def parse_args():
+    # Parser initialization:
+    parser = argparse.ArgumentParser()
+    # ARGUMENT EXAMPLE:
+    # parser.add_argument('--clock', type=str, default='cus', choices=clock_choices, help='Desired clock configuration.')
+    # Compute bool:
+    parser.add_argument('--compute', action='store_true', help='To compute the data and fill the SQLite3 database.')
+    # Parsed args return:
+    return parser.parse_args()
 
 
 
