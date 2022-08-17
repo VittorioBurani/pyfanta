@@ -1,28 +1,23 @@
+from ast import main
+import os
 import numpy as np
 import pandas as pd
 import argparse
 import sqlite3
 
-sheet_id = '1-aqSXdI8ErfIp9mEe6K_FZ7HgzLw47-dUVHlzGpIq6k'
 
-sheet_name = 'griglia'
-path = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
-griglia_portieri = pd.read_csv(path)
+# Actual directory path:
+here = os.getcwd()
 
-sheet_name = 'vincenti'
-path = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
-stima_vincenti = pd.read_csv(path)
 
-sheet_name = 'stats_gazzetta'
-path = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
-stats_gazzetta = pd.read_csv(path)
-stats_gazzetta = stats_gazzetta[stats_gazzetta['Partite Giocate'] >= 10]
+# Databse connection handling:
+path_to_db = here + '/db.sqlite3'
+db = sqlite3.connect(path_to_db)
 
-sheet_name = 'stats_fantacalcio'
-path = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
-stats_fantacalcio = pd.read_csv(path)
-stats_fantacalcio = stats_fantacalcio[stats_fantacalcio['Partite Giocate'] >= 10]
 
+# Championship estimate from 'vincenti.csv'
+path_to_vincenti_csv = here + '/vincenti.csv'
+stima_vincenti = pd.read_csv(path_to_vincenti_csv)
 squadre = list(stima_vincenti.columns)
 
 for i in range(0,len(squadre)):
@@ -30,8 +25,7 @@ for i in range(0,len(squadre)):
         if i < j:
             stima_vincenti[squadre[j]][i] *= -1
 
-
-
+# Points mapping:
 def punti(x):
     if x == 0:
         return 2
@@ -44,6 +38,7 @@ def punti(x):
     else:
         return 6
 
+# Sorter function:
 def sorter(v):
     for i in range(0, len(v)-1):
         for j in range (i+1, len(v)):
@@ -53,6 +48,7 @@ def sorter(v):
                 v[j] = t
     return v
 
+# Championship estimer:
 def stima_campionato():
     classifica = [[squadre[i], 0] for i in range(0, len(squadre))]
     for i in range(0,len(squadre)):
@@ -60,83 +56,16 @@ def stima_campionato():
             classifica[i][1] += punti(-stima_vincenti[squadre[j]][i])
     return sorter(classifica)
 
-
-
+# Workaround to print right position:
 def posizione(c, s):
     for i in range(0, len(squadre)):
         if s == c[i][0]:
             return i+1
 
-def coppie_portieri():
-    classifica = stima_campionato()
-    coppie = {
-        0: [],
-        1: [],
-        2: [],
-        3: [],
-        4: [],
-        5: []
-    }
-    for i in range(0, len(squadre)):
-        for j in range(i+1, len(squadre)):
-            if griglia_portieri[squadre[i]][j] == 0:
-                coppie[0].append([squadre[i], squadre[j], posizione(classifica, squadre[i]), posizione(classifica, squadre[j])])
-            elif griglia_portieri[squadre[i]][j] == 1:
-                coppie[1].append([squadre[i], squadre[j], posizione(classifica, squadre[i]), posizione(classifica, squadre[j])])
-            elif griglia_portieri[squadre[i]][j] == 2:
-                coppie[2].append([squadre[i], squadre[j], posizione(classifica, squadre[i]), posizione(classifica, squadre[j])])
-            elif griglia_portieri[squadre[i]][j] == 3:
-                coppie[3].append([squadre[i], squadre[j], posizione(classifica, squadre[i]), posizione(classifica, squadre[j])])
-            elif griglia_portieri[squadre[i]][j] == 4:
-                coppie[4].append([squadre[i], squadre[j], posizione(classifica, squadre[i]), posizione(classifica, squadre[j])])
-            elif griglia_portieri[squadre[i]][j] == 5:
-                coppie[5].append([squadre[i], squadre[j], posizione(classifica, squadre[i]), posizione(classifica, squadre[j])])
-    for i in range(0,6):
-        if coppie[i]:
-            popper = []
-            for j in range(0, len(coppie[i])):
-                if coppie[i][j][2]+coppie[i][j][3] > 19:
-                    popper.append(j)
-            for j in range(-len(popper)+1,1):
-                coppie[i].pop(popper[-j])
-    return coppie
-
 
 
 def dataframe_gazzetta():
-    portieri = stats_gazzetta[stats_gazzetta['Ruolo'] == 'P']
-    portieri = portieri.sort_values(by='MFV', ascending=False)
-    portieri.to_excel('fantastats/portieri_gazzetta.xlsx', index=False)
-
-    difensori = stats_gazzetta[stats_gazzetta['Ruolo'] == 'D']
-    difensori = difensori.sort_values(by='MFV', ascending=False)
-    difensori.to_excel('fantastats/difensori_gazzetta.xlsx', index=False)
-
-    centrocampisti = stats_gazzetta[(stats_gazzetta['Ruolo'] == 'C') | (stats_gazzetta['Ruolo'] == 'T (C)')]
-    centrocampisti = centrocampisti.sort_values(by='MFV', ascending=False)
-    centrocampisti.to_excel('fantastats/centrocampisti_gazzetta.xlsx', index=False)
-
-    attaccanti = stats_gazzetta[(stats_gazzetta['Ruolo'] == 'A') | (stats_gazzetta['Ruolo'] == 'T (A)')]
-    attaccanti = attaccanti.sort_values(by='MFV', ascending=False)
-    attaccanti.to_excel('fantastats/attaccanti_gazzetta.xlsx', index=False)
-
-
-def dataframe_fantacalcio():
-    portieri = stats_fantacalcio[stats_fantacalcio['Ruolo'] == 'P']
-    portieri = portieri.sort_values(by='MFV', ascending=False)
-    portieri.to_excel('fantastats/portieri_fantacalcio.xlsx', index=False)
-
-    difensori = stats_fantacalcio[stats_fantacalcio['Ruolo'] == 'D']
-    difensori = difensori.sort_values(by='MFV', ascending=False)
-    difensori.to_excel('fantastats/difensori_fantacalcio.xlsx', index=False)
-
-    centrocampisti = stats_fantacalcio[(stats_fantacalcio['Ruolo'] == 'C') | (stats_fantacalcio['Ruolo'] == 'T (C)')]
-    centrocampisti = centrocampisti.sort_values(by='MFV', ascending=False)
-    centrocampisti.to_excel('fantastats/centrocampisti_fantacalcio.xlsx', index=False)
-
-    attaccanti = stats_fantacalcio[(stats_fantacalcio['Ruolo'] == 'A') | (stats_fantacalcio['Ruolo'] == 'T (A)')]
-    attaccanti = attaccanti.sort_values(by='MFV', ascending=False)
-    attaccanti.to_excel('fantastats/attaccanti_fantacalcio.xlsx', index=False)
+    pass
 
 
 # Arguments parser:
@@ -151,38 +80,14 @@ def parse_args():
     return parser.parse_args()
 
 
-
-if __name__ == '__main__':
+# Main Function:
+def main():
+    global db
+    # Championship estimation:
     classifica = stima_campionato()
-    coppie = coppie_portieri()
+    
 
-    classifica_dict = {
-        'Squadra': [],
-        'Punteggio': []
-    }
-    for i in classifica:
-        classifica_dict["Squadra"].append(i[0])
-        classifica_dict["Punteggio"].append(i[1])
-    classifica = pd.DataFrame(classifica_dict)
-    classifica.to_excel('fantastats/classifica.xlsx', index=False)
 
-    coppie_dict = {
-        'Partite in comune': [],
-        'Squadra 1': [],
-        'Squadra 2': [],
-        'Piazzamento 1': [],
-        'Piazzamento 2': []
-    }
-    for i in range(0,6):
-        if coppie[i]:
-            for j in range(len(coppie[i])):
-                coppie_dict['Partite in comune'].append(i)
-                coppie_dict['Squadra 1'].append(coppie[i][j][0])
-                coppie_dict['Squadra 2'].append(coppie[i][j][1])
-                coppie_dict['Piazzamento 1'].append(coppie[i][j][2])
-                coppie_dict['Piazzamento 2'].append(coppie[i][j][3])
-    coppie = pd.DataFrame(coppie_dict)
-    coppie.to_excel('fantastats/coppie_portieri.xlsx', index=False)
-
-    dataframe_gazzetta()
-    dataframe_fantacalcio()
+# Main script:
+if __name__ == '__main__':
+    main()
