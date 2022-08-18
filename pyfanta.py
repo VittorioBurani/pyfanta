@@ -20,10 +20,6 @@ path_to_vincenti_csv = here + '/vincenti.csv'
 stima_vincenti = pd.read_csv(path_to_vincenti_csv)
 squadre = list(stima_vincenti.columns)
 
-for i in range(0,len(squadre)):
-    for j in range(i+1,len(squadre)):
-        if i < j:
-            stima_vincenti[squadre[j]][i] *= -1
 
 # Points mapping:
 def punti(x):
@@ -38,6 +34,7 @@ def punti(x):
     else:
         return 6
 
+
 # Sorter function:
 def sorter(v):
     for i in range(0, len(v)-1):
@@ -48,22 +45,23 @@ def sorter(v):
                 v[j] = t
     return v
 
+
 # Championship estimer:
 def stima_campionato():
     classifica = [[squadre[i], 0] for i in range(0, len(squadre))]
     for i in range(0,len(squadre)):
-        for j in range(0, len(squadre)):
-            classifica[i][1] += punti(-stima_vincenti[squadre[j]][i])
+        classifica[i,1] = np.sum(punti(stima_vincenti.iloc[i].to_numpy()))
     return sorter(classifica)
 
+
 # Workaround to print right position:
-def posizione(c, s):
+def posizione_classifica(classifica, squadra):
     for i in range(0, len(squadre)):
-        if s == c[i][0]:
+        if squadra == classifica[i][0]:
             return i+1
 
 
-
+# Webscraper function to get gazzetta.it dataframe for given year:
 def dataframe_gazzetta():
     pass
 
@@ -80,9 +78,27 @@ def parse_args():
     return parser.parse_args()
 
 
+# Write table to SQL:
+def write_df_to_db(df, table_name):
+    global db
+    ##push the dataframe to sql 
+    df.to_sql(table_name, db, if_exists="replace")
+    ##create the table
+    db.execute(
+        f"""
+        create table {table_name} as 
+        select * from {table_name}
+        """)
+
+
+# Read DB table from SQL:
+def read_df_from_db(table_name):
+    global db
+    return pd.read_sql_query(f'select * from {table_name}', db)
+
+
 # Main Function:
 def main():
-    global db
     # Championship estimation:
     classifica = stima_campionato()
     
