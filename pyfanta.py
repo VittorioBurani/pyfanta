@@ -4,6 +4,10 @@ import numpy as np
 import pandas as pd
 import argparse
 import sqlite3
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
 
 
 # Actual directory path:
@@ -22,7 +26,7 @@ squadre = list(stima_vincenti.columns)
 
 
 # Points mapping:
-def punti(x):
+def punti(x:int):
     if x == 0:
         return 2
     elif x == -2:
@@ -36,7 +40,7 @@ def punti(x):
 
 
 # Sorter function:
-def sorter(v):
+def sorter(v:list):
     for i in range(0, len(v)-1):
         for j in range (i+1, len(v)):
             if v[i][1] <= v[j][1]:
@@ -55,15 +59,157 @@ def stima_campionato():
 
 
 # Workaround to print right position:
-def posizione_classifica(classifica, squadra):
+def posizione_classifica(classifica:list, squadra:str):
     for i in range(0, len(squadre)):
         if squadra == classifica[i][0]:
             return i+1
 
 
 # Webscraper function to get gazzetta.it dataframe for given year:
-def dataframe_gazzetta():
-    pass
+def dataframe_gazzetta(year:int):
+    # Firefox driver:
+    driver = webdriver.Firefox()
+    driver.get(f"https://www.gazzetta.it/calcio/fantanews/statistiche/serie-a-{year-1}-{year%2000}/")
+    full_table_rows = driver.find_element(By.TAG_NAME, 'table').text.split('\n')[48:]
+    driver.close()
+    columns = ['Giocatore', 'Ruolo', 'Quotazione', 'Partite Giocate', 'Goal', 'Assist', 'Ammonizioni', 'Espulsioni', 'Rigori Tirati', 'Rigori Segnati', 'Rigori Sbagliati', 'Rigori Parati', 'MV', 'MFV', 'Bonus/Malus']
+    rows = dict()
+    rows['Giocatore'] =        list()
+    rows['Ruolo'] =            list()
+    rows['Quotazione'] =       list()
+    rows['Partite Giocate'] =  list()
+    rows['Goal'] =             list()
+    rows['Assist'] =           list()
+    rows['Ammonizioni'] =      list()
+    rows['Espulsioni'] =       list()
+    rows['Rigori Tirati'] =    list()
+    rows['Rigori Segnati'] =   list()
+    rows['Rigori Sbagliati'] = list()
+    rows['Rigori Parati'] =    list()
+    rows['MV'] =               list()
+    rows['MFV'] =              list()
+    rows['Bonus/Malus'] =      list()
+    for r in full_table_rows:
+        l = r.split(' ')
+        if l[1] in ['A', 'C', 'D', 'P', 'T']:
+            rows['Giocatore'].append(               l[0]                               )
+            if l[1] == 'T':
+                rows['Ruolo'].append(               l[1] + l[2]                        )
+                rows['Quotazione'].append(          int(l[3]) if l[3] != '-' else 0    )
+                rows['Partite Giocate'].append(     int(l[4]) if l[4] != '-' else 0    )
+                rows['Goal'].append(                int(l[5]) if l[5] != '-' else 0    )
+                rows['Assist'].append(              int(l[6]) if l[6] != '-' else 0    )
+                rows['Ammonizioni'].append(         int(l[7]) if l[7] != '-' else 0    )
+                rows['Espulsioni'].append(          int(l[8]) if l[8] != '-' else 0    )
+                rows['Rigori Tirati'].append(       int(l[9]) if l[9] != '-' else 0    )
+                rows['Rigori Segnati'].append(      int(l[10]) if l[10] != '-' else 0  )
+                rows['Rigori Sbagliati'].append(    int(l[11]) if l[11] != '-' else 0  )
+                rows['Rigori Parati'].append(       int(l[12]) if l[12] != '-' else 0  )
+                rows['MV'].append(                  float(l[13]) if l[13] != '-' else 0)
+                rows['MFV'].append(                 float(l[14]) if l[14] != '-' else 0)
+                rows['Bonus/Malus'].append(         float(l[15]) if l[15] != '-' else 0)
+            else:
+                rows['Ruolo'].append(               l[1]                               )
+                rows['Quotazione'].append(          int(l[2]) if l[2] != '-' else 0    )
+                rows['Partite Giocate'].append(     int(l[3]) if l[3] != '-' else 0    )
+                rows['Goal'].append(                int(l[4]) if l[4] != '-' else 0    )
+                rows['Assist'].append(              int(l[5]) if l[5] != '-' else 0    )
+                rows['Ammonizioni'].append(         int(l[6]) if l[6] != '-' else 0    )
+                rows['Espulsioni'].append(          int(l[7]) if l[7] != '-' else 0    )
+                rows['Rigori Tirati'].append(       int(l[8]) if l[8] != '-' else 0    )
+                rows['Rigori Segnati'].append(      int(l[9]) if l[9] != '-' else 0  )
+                rows['Rigori Sbagliati'].append(    int(l[10]) if l[10] != '-' else 0  )
+                rows['Rigori Parati'].append(       int(l[11]) if l[11] != '-' else 0  )
+                rows['MV'].append(                  float(l[12]) if l[12] != '-' else 0)
+                rows['MFV'].append(                 float(l[13]) if l[13] != '-' else 0)
+                rows['Bonus/Malus'].append(         float(l[14]) if l[14] != '-' else 0)
+        else:
+            if l[2] in ['A', 'C', 'D', 'P', 'T']:
+                rows['Giocatore'].append(           l[0] + ' ' + l[1]                  )
+                if l[2] == 'T':
+                    rows['Ruolo'].append(           l[2] + l[3]                        )
+                    rows['Quotazione'].append(      int(l[4]) if l[4] != '-' else 0    )
+                    rows['Partite Giocate'].append( int(l[5]) if l[5] != '-' else 0    )
+                    rows['Goal'].append(            int(l[6]) if l[6] != '-' else 0    )
+                    rows['Assist'].append(          int(l[7]) if l[7] != '-' else 0    )
+                    rows['Ammonizioni'].append(     int(l[8]) if l[8] != '-' else 0    )
+                    rows['Espulsioni'].append(      int(l[9]) if l[9] != '-' else 0    )
+                    rows['Rigori Tirati'].append(   int(l[10]) if l[10] != '-' else 0  )
+                    rows['Rigori Segnati'].append(  int(l[11]) if l[11] != '-' else 0  )
+                    rows['Rigori Sbagliati'].append(int(l[12]) if l[12] != '-' else 0  )
+                    rows['Rigori Parati'].append(   int(l[13]) if l[13] != '-' else 0  )
+                    rows['MV'].append(              float(l[14]) if l[14] != '-' else 0)
+                    rows['MFV'].append(             float(l[15]) if l[15] != '-' else 0)
+                    rows['Bonus/Malus'].append(     float(l[16]) if l[16] != '-' else 0)
+                else:
+                    rows['Ruolo'].append(           l[2]                               )
+                    rows['Quotazione'].append(      int(l[3]) if l[3] != '-' else 0    )
+                    rows['Partite Giocate'].append( int(l[4]) if l[4] != '-' else 0    )
+                    rows['Goal'].append(            int(l[5]) if l[5] != '-' else 0    )
+                    rows['Assist'].append(          int(l[6]) if l[6] != '-' else 0    )
+                    rows['Ammonizioni'].append(     int(l[7]) if l[7] != '-' else 0    )
+                    rows['Espulsioni'].append(      int(l[8]) if l[8] != '-' else 0    )
+                    rows['Rigori Tirati'].append(   int(l[9]) if l[9] != '-' else 0    )
+                    rows['Rigori Segnati'].append(  int(l[10]) if l[10] != '-' else 0  )
+                    rows['Rigori Sbagliati'].append(int(l[11]) if l[11] != '-' else 0  )
+                    rows['Rigori Parati'].append(   int(l[12]) if l[12] != '-' else 0  )
+                    rows['MV'].append(              float(l[13]) if l[13] != '-' else 0)
+                    rows['MFV'].append(             float(l[14]) if l[14] != '-' else 0)
+                    rows['Bonus/Malus'].append(     float(l[15]) if l[15] != '-' else 0)
+            else:
+                rows['Giocatore'].append(           l[0] + ' ' + l[1] + ' ' + l[2]     )
+                if l[3] == 'T':
+                    rows['Ruolo'].append(           l[3] + l[4]                        )
+                    rows['Quotazione'].append(      int(l[5]) if l[5] != '-' else 0    )
+                    rows['Partite Giocate'].append( int(l[6]) if l[6] != '-' else 0    )
+                    rows['Goal'].append(            int(l[7]) if l[7] != '-' else 0    )
+                    rows['Assist'].append(          int(l[8]) if l[8] != '-' else 0    )
+                    rows['Ammonizioni'].append(     int(l[9]) if l[9] != '-' else 0    )
+                    rows['Espulsioni'].append(      int(l[10]) if l[10] != '-' else 0  )
+                    rows['Rigori Tirati'].append(   int(l[11]) if l[11] != '-' else 0  )
+                    rows['Rigori Segnati'].append(  int(l[12]) if l[12] != '-' else 0  )
+                    rows['Rigori Sbagliati'].append(int(l[13]) if l[13] != '-' else 0  )
+                    rows['Rigori Parati'].append(   int(l[14]) if l[14] != '-' else 0  )
+                    rows['MV'].append(              float(l[15]) if l[15] != '-' else 0)
+                    rows['MFV'].append(             float(l[16]) if l[16] != '-' else 0)
+                    rows['Bonus/Malus'].append(     float(l[17]) if l[17] != '-' else 0)
+                else:
+                    rows['Ruolo'].append(           l[3]                               )
+                    rows['Quotazione'].append(      int(l[4]) if l[4] != '-' else 0    )
+                    rows['Partite Giocate'].append( int(l[5]) if l[5] != '-' else 0    )
+                    rows['Goal'].append(            int(l[6]) if l[6] != '-' else 0    )
+                    rows['Assist'].append(          int(l[7]) if l[7] != '-' else 0    )
+                    rows['Ammonizioni'].append(     int(l[8]) if l[8] != '-' else 0    )
+                    rows['Espulsioni'].append(      int(l[9]) if l[9] != '-' else 0    )
+                    rows['Rigori Tirati'].append(   int(l[10]) if l[10] != '-' else 0  )
+                    rows['Rigori Segnati'].append(  int(l[11]) if l[11] != '-' else 0  )
+                    rows['Rigori Sbagliati'].append(int(l[12]) if l[12] != '-' else 0  )
+                    rows['Rigori Parati'].append(   int(l[13]) if l[13] != '-' else 0  )
+                    rows['MV'].append(              float(l[14]) if l[14] != '-' else 0)
+                    rows['MFV'].append(             float(l[15]) if l[15] != '-' else 0)
+                    rows['Bonus/Malus'].append(     float(l[16]) if l[16] != '-' else 0)
+    df = pd.DataFrame.from_dict(rows)
+    return df
+
+
+# Webscraper function to get gazzetta.it players list for given year:
+def get_actual_players(year:int):
+    # Firefox driver:
+    driver = webdriver.Firefox()
+    driver.get(f"https://www.gazzetta.it/calcio/fantanews/statistiche/serie-a-{year-1}-{year%2000}/")
+    full_table = driver.find_element(By.TAG_NAME, 'table')
+    rows = full_table.text.split('\n')[48:]
+    driver.close()
+    players_list = list()
+    for r in rows:
+        l = r.split(' ')
+        if l[1] in ['A', 'C', 'D', 'P', 'T']:
+            players_list.append(l[0])
+        elif l[2] in ['A', 'C', 'D', 'P', 'T']:
+            players_list.append(l[0] + ' ' + l[1])
+        else:
+            players_list.append(l[0] + ' ' + l[1] + ' ' + l[2])
+    return players_list
 
 
 # Arguments parser:
@@ -74,16 +220,18 @@ def parse_args():
     # parser.add_argument('--clock', type=str, default='cus', choices=clock_choices, help='Desired clock configuration.')
     # Compute bool:
     parser.add_argument('--compute', action='store_true', help='To compute the data and fill the SQLite3 database.')
+    # Last finished championship year:
+    parser.add_argument('--year', type=int, default=2022, help='Last finished championship year.')
     # Parsed args return:
     return parser.parse_args()
 
 
 # Write table to SQL:
-def write_df_to_db(df, table_name):
+def write_df_to_db(df:pd.DataFrame, table_name:str):
     global db
-    ##push the dataframe to sql 
+    # Push the dataframe to sql:
     df.to_sql(table_name, db, if_exists="replace")
-    ##create the table
+    # Create the table:
     db.execute(
         f"""
         create table {table_name} as 
@@ -92,16 +240,27 @@ def write_df_to_db(df, table_name):
 
 
 # Read DB table from SQL:
-def read_df_from_db(table_name):
+def read_df_from_db(table_name:str):
     global db
+    # Extract df table from db:
     return pd.read_sql_query(f'select * from {table_name}', db)
 
 
 # Main Function:
 def main():
+    # Parse given arguments:
+    args = parse_args()
     # Championship estimation:
-    classifica = stima_campionato()
-    
+    # classifica = stima_campionato()
+    # Get gazzetta.it data for last championship:
+    last_year_db = dataframe_gazzetta(args.year)
+    print(last_year_db)
+    # Get gazzetta.it data for previous championship:
+    previous_year_db = dataframe_gazzetta(args.year-1)
+    print(previous_year_db)
+    # Get actual championship players:
+    players = get_actual_players(args.year+1)
+    print(players)
 
 
 # Main script:
