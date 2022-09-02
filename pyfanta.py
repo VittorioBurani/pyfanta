@@ -25,17 +25,19 @@ squadre = list(stima_vincenti.columns)
 
 
 # Points mapping:
-def punti(x:int):
+def complem_points(x:int):
     if x == 0:
-        return 2
-    elif x == -2:
-        return 0
-    elif x == -1:
-        return 1
+        return 6
     elif x == 1:
         return 4
+    elif x == 2:
+        return 2
+    elif x == 3:
+        return 3
+    elif x == 4:
+        return 1
     else:
-        return 6
+        return 0
 
 
 # Sorter function:
@@ -51,9 +53,13 @@ def sorter(v:list):
 
 # Championship estimer:
 def stima_campionato():
+    for i in range(len(squadre)):
+        for j in range(len(squadre)):
+            if i > j:
+                stima_vincenti[i][j] = complem_points(stima_vincenti[j][i])
     classifica = [[squadre[i], 0] for i in range(0, len(squadre))]
     for i in range(0,len(squadre)):
-        classifica[i,1] = np.sum(punti(stima_vincenti.iloc[i].to_numpy()))
+        classifica[i,1] = np.sum(stima_vincenti.iloc[i].to_numpy())
     return sorter(classifica)
 
 
