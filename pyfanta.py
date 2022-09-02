@@ -1,4 +1,3 @@
-from ast import main
 import os
 import numpy as np
 import pandas as pd
@@ -199,6 +198,8 @@ def get_actual_players(year:int):
     driver.get(f"https://www.gazzetta.it/calcio/fantanews/statistiche/serie-a-{year-1}-{year%2000}/")
     full_table = driver.find_element(By.TAG_NAME, 'table')
     rows = full_table.text.split('\n')[48:]
+    team_blob = full_table.get_attribute("innerHTML").split('\n')
+    team_for_player = [team.replace('\t','')[35:].replace('</span>','') for team in team_blob if 'hidden-team-name' in team]
     driver.close()
     players_list = list()
     for r in rows:
@@ -209,7 +210,13 @@ def get_actual_players(year:int):
             players_list.append(l[0] + ' ' + l[1])
         else:
             players_list.append(l[0] + ' ' + l[1] + ' ' + l[2])
-    return players_list
+    ret = np.array((players_list, team_for_player)).T
+    return ret
+
+
+# Create df with existent players divided by role and new players list:
+def filter_data(lasty_df:pd.DataFrame, prevy_df:pd.DataFrame, players:list):
+    return atk, cen, dif, por, new_atk, new_cen, new_dif, new_por
 
 
 # Arguments parser:
@@ -253,14 +260,17 @@ def main():
     # Championship estimation:
     # classifica = stima_campionato()
     # Get gazzetta.it data for last championship:
-    last_year_db = dataframe_gazzetta(args.year)
-    print(last_year_db)
+    last_year_df = dataframe_gazzetta(args.year)
+    print(last_year_df)
     # Get gazzetta.it data for previous championship:
-    previous_year_db = dataframe_gazzetta(args.year-1)
-    print(previous_year_db)
+    previous_year_df = dataframe_gazzetta(args.year-1)
+    print(previous_year_df)
     # Get actual championship players:
     players = get_actual_players(args.year+1)
     print(players)
+    exit()
+    # Create df with existent players divided by role and new players list:
+    atk, cen, dif, por, new_atk, new_cen, new_dif, new_por = filter_data(last_year_df, previous_year_df, players)
 
 
 # Main script:
