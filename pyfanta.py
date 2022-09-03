@@ -4,8 +4,8 @@ import pandas as pd
 import argparse
 import sqlite3
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.keys import Keys
+# from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 
 
@@ -20,7 +20,7 @@ db = sqlite3.connect(path_to_db)
 
 # Championship estimate from 'vincenti.csv'
 path_to_vincenti_csv = here + '/vincenti.csv'
-stima_vincenti = pd.read_csv(path_to_vincenti_csv)
+stima_vincenti = pd.read_csv(path_to_vincenti_csv, index_col=0)
 squadre = list(stima_vincenti.columns)
 
 
@@ -56,17 +56,24 @@ def stima_campionato():
     for i in range(len(squadre)):
         for j in range(len(squadre)):
             if i > j:
-                stima_vincenti[i][j] = complem_points(stima_vincenti[j][i])
+                stima_vincenti.loc[squadre[j], squadre[i]] = complem_points(stima_vincenti[squadre[j]][squadre[i]]) # Tricky!!
     classifica = [[squadre[i], 0] for i in range(0, len(squadre))]
     for i in range(0,len(squadre)):
-        classifica[i,1] = np.sum(stima_vincenti.iloc[i].to_numpy())
-    return sorter(classifica)
+        classifica[i][1] = np.sum(stima_vincenti.iloc[i].to_numpy())
+    classifica = np.array(sorter(classifica))
+    classifica_df = {'Squadra': list(), 'Punti': list()}
+    for i in range(len(classifica)):
+        classifica_df['Squadra'].append(classifica[i,0])
+        classifica_df['Punti'].append(classifica[i,1])
+    classifica_df = pd.DataFrame.from_dict(classifica_df)
+    return classifica_df
 
 
 # Workaround to print right position:
-def posizione_classifica(classifica:list, squadra:str):
+def posizione_classifica(classifica:pd.DataFrame, squadra:str):
+    serie = classifica['Squadra']
     for i in range(0, len(squadre)):
-        if squadra == classifica[i][0]:
+        if squadra == serie[i]:
             return i+1
 
 
@@ -243,13 +250,13 @@ def parse_args():
 def write_df_to_db(df:pd.DataFrame, table_name:str):
     global db
     # Push the dataframe to sql:
-    df.to_sql(table_name, db, if_exists="replace")
+    df.to_sql(table_name, db, if_exists="replace", index=False)
     # Create the table:
-    db.execute(
-        f"""
-        create table {table_name} as 
-        select * from {table_name}
-        """)
+    # db.execute(
+    #     f"""
+    #     create table {table_name} as 
+    #     select * from {table_name}
+    #     """)
 
 
 # Read DB table from SQL:
@@ -264,7 +271,11 @@ def main():
     # Parse given arguments:
     args = parse_args()
     # Championship estimation:
-    # classifica = stima_campionato()
+    classifica = stima_campionato()
+    write_df_to_db(df=classifica, table_name='Classifica')
+    classifica = read_df_from_db(table_name='Classifica')
+    print(classifica)
+    exit()
     # Get gazzetta.it data for last championship:
     last_year_df = dataframe_gazzetta(args.year)
     print(last_year_df)
