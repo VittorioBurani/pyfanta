@@ -211,8 +211,9 @@ def get_actual_players(year:int):
     driver.get(f"https://www.gazzetta.it/calcio/fantanews/statistiche/serie-a-{year-1}-{year%2000}/")
     full_table = driver.find_element(By.TAG_NAME, 'table')
     rows = full_table.text.split('\n')[48:]
-    team_blob = full_table.get_attribute("innerHTML").split('\n')
-    team_for_player = [team.replace('\t','')[35:].replace('</span>','') for team in team_blob if 'hidden-team-name' in team]
+    table_blob = full_table.get_attribute("innerHTML").split('\n')
+    team_for_player = [team.replace('\t','')[35:].replace('</span>','').capitalize() for team in table_blob if 'hidden-team-name' in team]
+    role_for_player = [role.replace('\t','')[28:].replace('</td>','').replace(' ', '') for role in table_blob if ('field-ruolo' in role and not 'OLD' in role)][1:]
     driver.close()
     players_list = list()
     for r in rows:
@@ -223,12 +224,39 @@ def get_actual_players(year:int):
             players_list.append(l[0] + ' ' + l[1])
         else:
             players_list.append(l[0] + ' ' + l[1] + ' ' + l[2])
-    ret = np.array((players_list, team_for_player)).T
+    ret = np.array((players_list, team_for_player, role_for_player)).T
     return ret
 
 
-# Create df with existent players divided by role and new players list:
+# Create df with existent and new players divided by role:
 def filter_data(lasty_df:pd.DataFrame, prevy_df:pd.DataFrame, players:list):
+    columns = ['Giocatore', 'Squadra', 'Ruolo', 'Quotazione', 'Partite Giocate', 'Goal', 'Assist', 'Ammonizioni', 'Espulsioni', 'Rigori Tirati', 'Rigori Segnati', 'Rigori Sbagliati', 'Rigori Parati', 'MV', 'MFV', 'Bonus/Malus']
+    full_df_dict = {col: list() for col in columns}
+    new_players_dict = {col: list() for col in columns[:3]}
+    full_df_dict['Giocatore'] = list(players[:,0])
+    full_df_dict['Squadra'] = list(players[:,1])
+    full_df_dict['Ruolo'] = list(players[:,2])
+    lasty_pl = lasty_df['Giocatore']
+    prevy_pl = prevy_df['Giocatore']
+    erase_list = list()
+    for i,p in enumerate(full_df_dict['Giocatore']):
+        if (p in lasty_pl) and (p in prevy_df):
+            pass 
+        elif p in lasty_pl:
+            pass
+        elif p in prevy_pl:
+            pass
+        else:
+            new_players_dict['Giocatore'].append(full_df_dict['Giocatore'][i])
+            new_players_dict['Squadra'].append(full_df_dict['Squadra'][i])
+            new_players_dict['Ruolo'].append(full_df_dict['Ruolo'][i])
+            erase_list.append(i)
+    for i in erase_list.reverse():
+        for c in columns:
+            full_df_dict[c].pop(i)
+    new_players_df = pd.DataFrame.from_dict(new_players_dict)
+    old_players_df = pd.DataFrame.from_dict(full_df_dict)
+    exit()
     return atk, cen, dif, por, new_atk, new_cen, new_dif, new_por
 
 
@@ -271,20 +299,22 @@ def main():
     # Parse given arguments:
     args = parse_args()
     # Championship estimation:
-    classifica = stima_campionato()
-    write_df_to_db(df=classifica, table_name='Classifica')
-    classifica = read_df_from_db(table_name='Classifica')
-    print(classifica)
-    exit()
+    # classifica = stima_campionato()
+    # write_df_to_db(df=classifica, table_name='Classifica')
+    # classifica = read_df_from_db(table_name='Classifica')
+    # print(classifica)
+    # exit()
     # Get gazzetta.it data for last championship:
-    last_year_df = dataframe_gazzetta(args.year)
-    print(last_year_df)
+    # last_year_df = dataframe_gazzetta(args.year)
+    # print(last_year_df)
     # Get gazzetta.it data for previous championship:
-    previous_year_df = dataframe_gazzetta(args.year-1)
-    print(previous_year_df)
+    # previous_year_df = dataframe_gazzetta(args.year-1)
+    # print(previous_year_df)
     # Get actual championship players:
     players = get_actual_players(args.year+1)
     print(players)
+
+    # filter_data(last_year_df, previous_year_df, players)
     exit()
     # Create df with existent players divided by role and new players list:
     atk, cen, dif, por, new_atk, new_cen, new_dif, new_por = filter_data(last_year_df, previous_year_df, players)
