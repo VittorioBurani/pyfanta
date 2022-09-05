@@ -280,9 +280,15 @@ def filter_data(lasty_df:pd.DataFrame, prevy_df:pd.DataFrame, players:list):
             new_players_dict['Quotazione'].append(players[i,3])
     new_players_df = pd.DataFrame.from_dict(new_players_dict)
     old_players_df = pd.DataFrame.from_dict(full_df_dict)
-    print(old_players_df)
-    print(new_players_df)
-    exit()
+    atk = old_players_df.loc[(old_players_df['Ruolo'] == 'A') | (old_players_df['Ruolo'] == 'T(A)')]
+    cen = old_players_df.loc[(old_players_df['Ruolo'] == 'C') | (old_players_df['Ruolo'] == 'T(C)')]
+    dif = old_players_df.loc[old_players_df['Ruolo'] == 'D']
+    por = old_players_df.loc[old_players_df['Ruolo'] == 'P']
+    new_atk = new_players_df.loc[(new_players_df['Ruolo'] == 'A') | (new_players_df['Ruolo'] == 'T(A)')]
+    new_cen = new_players_df.loc[(new_players_df['Ruolo'] == 'C') | (new_players_df['Ruolo'] == 'T(C)')]
+    new_dif = new_players_df.loc[new_players_df['Ruolo'] == 'D']
+    new_por = new_players_df.loc[new_players_df['Ruolo'] == 'P']
+    print(atk, cen, dif, por, new_atk, new_cen, new_dif, new_por)
     return atk, cen, dif, por, new_atk, new_cen, new_dif, new_por
 
 
@@ -296,6 +302,8 @@ def parse_args():
     parser.add_argument('--compute', action='store_true', help='To compute the data and fill the SQLite3 database.')
     # Last finished championship year:
     parser.add_argument('--year', type=int, default=2022, help='Last finished championship year.')
+    # Create csv file with general data:
+    parser.add_argument('--general-csv', action='store_true', help='Create csv file with general tables data.')
     # Parsed args return:
     return parser.parse_args()
 
@@ -305,12 +313,6 @@ def write_df_to_db(df:pd.DataFrame, table_name:str):
     global db
     # Push the dataframe to sql:
     df.to_sql(table_name, db, if_exists="replace", index=False)
-    # Create the table:
-    # db.execute(
-    #     f"""
-    #     create table {table_name} as 
-    #     select * from {table_name}
-    #     """)
 
 
 # Read DB table from SQL:
@@ -324,26 +326,36 @@ def read_df_from_db(table_name:str):
 def main():
     # Parse given arguments:
     args = parse_args()
-    # Championship estimation:
-    # classifica = stima_campionato()
-    # write_df_to_db(df=classifica, table_name='Classifica')
-    # classifica = read_df_from_db(table_name='Classifica')
-    # print(classifica)
-    # exit()
-    # Get gazzetta.it data for last championship:
-    last_year_df = dataframe_gazzetta(args.year)
-    # print(last_year_df)
-    # Get gazzetta.it data for previous championship:
-    previous_year_df = dataframe_gazzetta(args.year-1)
-    # print(previous_year_df)
-    # Get actual championship players:
-    players = get_actual_players(args.year+1)
-
-    filter_data(last_year_df, previous_year_df, players)
-    exit()
-    # Create df with existent players divided by role and new players list:
-    atk, cen, dif, por, new_atk, new_cen, new_dif, new_por = filter_data(last_year_df, previous_year_df, players)
-
+    # Compute tables:
+    if args.compute:
+        # Championship estimation:
+        classifica = stima_campionato()
+        write_df_to_db(df=classifica, table_name='Classifica')
+        # Get gazzetta.it data for last championship:
+        last_year_df = dataframe_gazzetta(args.year)
+        # Get gazzetta.it data for previous championship:
+        previous_year_df = dataframe_gazzetta(args.year-1)
+        # Get actual championship players:
+        players = get_actual_players(args.year+1)
+        # Create df with existent players divided by role and new players list:
+        atk, cen, dif, por, new_atk, new_cen, new_dif, new_por = filter_data(last_year_df, previous_year_df, players)
+        write_df_to_db(df=atk, table_name='Attaccanti')
+        write_df_to_db(df=cen, table_name='Centrocampisti')
+        write_df_to_db(df=dif, table_name='Difensori')
+        write_df_to_db(df=por, table_name='Portieri')
+        write_df_to_db(df=new_atk, table_name='Nuovi_Attaccanti')
+        write_df_to_db(df=new_cen, table_name='Nuovi_Centrocampisti')
+        write_df_to_db(df=new_dif, table_name='Nuovi_Difensori')
+        write_df_to_db(df=new_por, table_name='Nuovi_Portieri')
+    # Genrate general csv data:
+    if args.general_csv:
+        # Table names:
+        tables_name = ['Classifica', 'Attaccanti', 'Centrocampisti', 'Difensori', 'Portieri', 'Nuovi_Attaccanti', 'Nuovi_Centrocampisti', 'Nuovi_Difensori', 'Nuovi_Portieri']
+        # Path to stats dir:
+        stats_dirpath = os.path.join(os.curdir, 'fantastats/')
+        # Generate csv with data tables:
+        for i in tables_name:
+            read_df_from_db(table_name=i).to_csv(stats_dirpath + i + '.csv', index=False)
 
 # Main script:
 if __name__ == '__main__':
