@@ -214,6 +214,7 @@ def get_actual_players(year:int):
     table_blob = full_table.get_attribute("innerHTML").split('\n')
     team_for_player = [team.replace('\t','')[35:].replace('</span>','').capitalize() for team in table_blob if 'hidden-team-name' in team]
     role_for_player = [role.replace('\t','')[28:].replace('</td>','').replace(' ', '') for role in table_blob if ('field-ruolo' in role and not 'OLD' in role)][1:]
+    quot_for_player = [int(quot.replace('\t','')[38:].replace('</td>','').replace(' ', '')) for quot in table_blob if 'field-q selectedField' in quot]
     driver.close()
     players_list = list()
     for r in rows:
@@ -224,7 +225,7 @@ def get_actual_players(year:int):
             players_list.append(l[0] + ' ' + l[1])
         else:
             players_list.append(l[0] + ' ' + l[1] + ' ' + l[2])
-    ret = np.array((players_list, team_for_player, role_for_player)).T
+    ret = np.array((players_list, team_for_player, role_for_player, quot_for_player)).T
     return ret
 
 
@@ -232,30 +233,55 @@ def get_actual_players(year:int):
 def filter_data(lasty_df:pd.DataFrame, prevy_df:pd.DataFrame, players:list):
     columns = ['Giocatore', 'Squadra', 'Ruolo', 'Quotazione', 'Partite Giocate', 'Goal', 'Assist', 'Ammonizioni', 'Espulsioni', 'Rigori Tirati', 'Rigori Segnati', 'Rigori Sbagliati', 'Rigori Parati', 'MV', 'MFV', 'Bonus/Malus']
     full_df_dict = {col: list() for col in columns}
-    new_players_dict = {col: list() for col in columns[:3]}
-    full_df_dict['Giocatore'] = list(players[:,0])
-    full_df_dict['Squadra'] = list(players[:,1])
-    full_df_dict['Ruolo'] = list(players[:,2])
-    lasty_pl = lasty_df['Giocatore']
-    prevy_pl = prevy_df['Giocatore']
-    erase_list = list()
-    for i,p in enumerate(full_df_dict['Giocatore']):
-        if (p in lasty_pl) and (p in prevy_df):
-            pass 
+    new_players_dict = {col: list() for col in columns[:4]}
+    act_pl = list(players[:,0])
+    lasty_pl = list(lasty_df['Giocatore'])
+    prevy_pl = list(prevy_df['Giocatore'])
+    for i,p in enumerate(act_pl):
+        if (p in lasty_pl) and (p in prevy_pl):
+            # Old players:
+            full_df_dict['Giocatore'].append(players[i,0])
+            full_df_dict['Squadra'].append(players[i,1])
+            full_df_dict['Ruolo'].append(players[i,2])
+            full_df_dict['Quotazione'].append(players[i,3])
+            ly_serie = lasty_df.loc[lasty_df['Giocatore'] == p]
+            py_serie = prevy_df.loc[prevy_df['Giocatore'] == p]
+            for col in columns[4:]:
+                if col in ('MV', 'MFV'):
+                    ly_totv = ly_serie['Partite Giocate'].iloc[0] * ly_serie[col].iloc[0]
+                    py_totv = py_serie['Partite Giocate'].iloc[0] * py_serie[col].iloc[0]
+                    res = (ly_totv + py_totv) / (ly_serie['Partite Giocate'].iloc[0] + py_serie['Partite Giocate'].iloc[0])
+                    full_df_dict[col].append(float(f'{res:.2f}'))
+                else:
+                    full_df_dict[col].append(ly_serie[col].iloc[0]+py_serie[col].iloc[0])
         elif p in lasty_pl:
-            pass
+            # Old players:
+            full_df_dict['Giocatore'].append(players[i,0])
+            full_df_dict['Squadra'].append(players[i,1])
+            full_df_dict['Ruolo'].append(players[i,2])
+            full_df_dict['Quotazione'].append(players[i,3])
+            ly_serie = lasty_df.loc[lasty_df['Giocatore'] == p]
+            for col in columns[4:]:
+                full_df_dict[col].append(ly_serie[col].iloc[0])
         elif p in prevy_pl:
-            pass
+            # Old players:
+            full_df_dict['Giocatore'].append(players[i,0])
+            full_df_dict['Squadra'].append(players[i,1])
+            full_df_dict['Ruolo'].append(players[i,2])
+            full_df_dict['Quotazione'].append(players[i,3])
+            py_serie = prevy_df.loc[prevy_df['Giocatore'] == p]
+            for col in columns[4:]:
+                full_df_dict[col].append(py_serie[col].iloc[0])
         else:
-            new_players_dict['Giocatore'].append(full_df_dict['Giocatore'][i])
-            new_players_dict['Squadra'].append(full_df_dict['Squadra'][i])
-            new_players_dict['Ruolo'].append(full_df_dict['Ruolo'][i])
-            erase_list.append(i)
-    for i in erase_list.reverse():
-        for c in columns:
-            full_df_dict[c].pop(i)
+            # New players:
+            new_players_dict['Giocatore'].append(players[i,0])
+            new_players_dict['Squadra'].append(players[i,1])
+            new_players_dict['Ruolo'].append(players[i,2])
+            new_players_dict['Quotazione'].append(players[i,3])
     new_players_df = pd.DataFrame.from_dict(new_players_dict)
     old_players_df = pd.DataFrame.from_dict(full_df_dict)
+    print(old_players_df)
+    print(new_players_df)
     exit()
     return atk, cen, dif, por, new_atk, new_cen, new_dif, new_por
 
@@ -305,16 +331,15 @@ def main():
     # print(classifica)
     # exit()
     # Get gazzetta.it data for last championship:
-    # last_year_df = dataframe_gazzetta(args.year)
+    last_year_df = dataframe_gazzetta(args.year)
     # print(last_year_df)
     # Get gazzetta.it data for previous championship:
-    # previous_year_df = dataframe_gazzetta(args.year-1)
+    previous_year_df = dataframe_gazzetta(args.year-1)
     # print(previous_year_df)
     # Get actual championship players:
     players = get_actual_players(args.year+1)
-    print(players)
 
-    # filter_data(last_year_df, previous_year_df, players)
+    filter_data(last_year_df, previous_year_df, players)
     exit()
     # Create df with existent players divided by role and new players list:
     atk, cen, dif, por, new_atk, new_cen, new_dif, new_por = filter_data(last_year_df, previous_year_df, players)
