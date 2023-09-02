@@ -1,7 +1,7 @@
 # PyFanta
 ## The PyFanta Repository
 
-This bot is an automated Fantasy Football player list generator with statistics for Serie A.
+This bot is an automated Fantasy Football player list generator with statistics for Serie A (mostly taken from *La Gazzetta dello Sport* -> [*gazzetta.it*](https://www.gazzetta.it/)).
 
 *It will be assumed that have already installed [**Python 3**](https://www.python.org/downloads/) on your PC.*
 
@@ -131,11 +131,11 @@ pip3 install <missing-module-1> <missing-module-2> <...>
 Run the main script *"pyfanta.py*":
 ```
 cd /path/to/pyfanta
-python holygrail.py
+python pyfanta.py
 ```
 ### **Linux or MacOS:**
 Run the main script *"pyfanta.py*":
 ```
 cd ~/pyfanta
-python3 holygrail.py
+python3 pyfanta.py
 ```
