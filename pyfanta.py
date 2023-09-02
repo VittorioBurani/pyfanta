@@ -1,4 +1,5 @@
 import os
+import re
 import numpy as np
 import pandas as pd
 import argparse
@@ -84,122 +85,49 @@ def dataframe_gazzetta(year:int):
     driver.get(f"https://www.gazzetta.it/calcio/fantanews/statistiche/serie-a-{year-1}-{year%2000}/")
     full_table_rows = driver.find_element(By.TAG_NAME, 'table').text.split('\n')[48:]
     driver.close()
-    columns = ['Giocatore', 'Ruolo', 'Quotazione', 'Partite Giocate', 'Goal', 'Assist', 'Ammonizioni', 'Espulsioni', 'Rigori Tirati', 'Rigori Segnati', 'Rigori Sbagliati', 'Rigori Parati', 'MV', 'MFV', 'Bonus/Malus']
-    rows = dict()
-    rows['Giocatore'] =        list()
-    rows['Ruolo'] =            list()
-    rows['Quotazione'] =       list()
-    rows['Partite Giocate'] =  list()
-    rows['Goal'] =             list()
-    rows['Assist'] =           list()
-    rows['Ammonizioni'] =      list()
-    rows['Espulsioni'] =       list()
-    rows['Rigori Tirati'] =    list()
-    rows['Rigori Segnati'] =   list()
-    rows['Rigori Sbagliati'] = list()
-    rows['Rigori Parati'] =    list()
-    rows['MV'] =               list()
-    rows['MFV'] =              list()
-    rows['Bonus/Malus'] =      list()
+    rows = {
+        'Giocatore':        list(),
+        'Ruolo':            list(),
+        'Quotazione':       list(),
+        'Partite Giocate':  list(),
+        'Goal':             list(),
+        'Assist':           list(),
+        'Ammonizioni':      list(),
+        'Espulsioni':       list(),
+        'Rigori Tirati':    list(),
+        'Rigori Segnati':   list(),
+        'Rigori Sbagliati': list(),
+        'Rigori Parati':    list(),
+        'MV':               list(),
+        'MFV':              list(),
+        'Bonus/Malus':      list(),
+    }
+    # Loop through table:
     for r in full_table_rows:
-        l = r.split(' ')
-        if l[1] in ['A', 'C', 'D', 'P', 'T']:
-            rows['Giocatore'].append(               l[0]                               )
-            if l[1] == 'T':
-                rows['Ruolo'].append(               l[1] + l[2]                        )
-                rows['Quotazione'].append(          int(l[3]) if l[3] != '-' else 0    )
-                rows['Partite Giocate'].append(     int(l[4]) if l[4] != '-' else 0    )
-                rows['Goal'].append(                int(l[5]) if l[5] != '-' else 0    )
-                rows['Assist'].append(              int(l[6]) if l[6] != '-' else 0    )
-                rows['Ammonizioni'].append(         int(l[7]) if l[7] != '-' else 0    )
-                rows['Espulsioni'].append(          int(l[8]) if l[8] != '-' else 0    )
-                rows['Rigori Tirati'].append(       int(l[9]) if l[9] != '-' else 0    )
-                rows['Rigori Segnati'].append(      int(l[10]) if l[10] != '-' else 0  )
-                rows['Rigori Sbagliati'].append(    int(l[11]) if l[11] != '-' else 0  )
-                rows['Rigori Parati'].append(       int(l[12]) if l[12] != '-' else 0  )
-                rows['MV'].append(                  float(l[13]) if l[13] != '-' else 0)
-                rows['MFV'].append(                 float(l[14]) if l[14] != '-' else 0)
-                rows['Bonus/Malus'].append(         float(l[15]) if l[15] != '-' else 0)
-            else:
-                rows['Ruolo'].append(               l[1]                               )
-                rows['Quotazione'].append(          int(l[2]) if l[2] != '-' else 0    )
-                rows['Partite Giocate'].append(     int(l[3]) if l[3] != '-' else 0    )
-                rows['Goal'].append(                int(l[4]) if l[4] != '-' else 0    )
-                rows['Assist'].append(              int(l[5]) if l[5] != '-' else 0    )
-                rows['Ammonizioni'].append(         int(l[6]) if l[6] != '-' else 0    )
-                rows['Espulsioni'].append(          int(l[7]) if l[7] != '-' else 0    )
-                rows['Rigori Tirati'].append(       int(l[8]) if l[8] != '-' else 0    )
-                rows['Rigori Segnati'].append(      int(l[9]) if l[9] != '-' else 0  )
-                rows['Rigori Sbagliati'].append(    int(l[10]) if l[10] != '-' else 0  )
-                rows['Rigori Parati'].append(       int(l[11]) if l[11] != '-' else 0  )
-                rows['MV'].append(                  float(l[12]) if l[12] != '-' else 0)
-                rows['MFV'].append(                 float(l[13]) if l[13] != '-' else 0)
-                rows['Bonus/Malus'].append(         float(l[14]) if l[14] != '-' else 0)
-        else:
-            if l[2] in ['A', 'C', 'D', 'P', 'T']:
-                rows['Giocatore'].append(           l[0] + ' ' + l[1]                  )
-                if l[2] == 'T':
-                    rows['Ruolo'].append(           l[2] + l[3]                        )
-                    rows['Quotazione'].append(      int(l[4]) if l[4] != '-' else 0    )
-                    rows['Partite Giocate'].append( int(l[5]) if l[5] != '-' else 0    )
-                    rows['Goal'].append(            int(l[6]) if l[6] != '-' else 0    )
-                    rows['Assist'].append(          int(l[7]) if l[7] != '-' else 0    )
-                    rows['Ammonizioni'].append(     int(l[8]) if l[8] != '-' else 0    )
-                    rows['Espulsioni'].append(      int(l[9]) if l[9] != '-' else 0    )
-                    rows['Rigori Tirati'].append(   int(l[10]) if l[10] != '-' else 0  )
-                    rows['Rigori Segnati'].append(  int(l[11]) if l[11] != '-' else 0  )
-                    rows['Rigori Sbagliati'].append(int(l[12]) if l[12] != '-' else 0  )
-                    rows['Rigori Parati'].append(   int(l[13]) if l[13] != '-' else 0  )
-                    rows['MV'].append(              float(l[14]) if l[14] != '-' else 0)
-                    rows['MFV'].append(             float(l[15]) if l[15] != '-' else 0)
-                    rows['Bonus/Malus'].append(     float(l[16]) if l[16] != '-' else 0)
-                else:
-                    rows['Ruolo'].append(           l[2]                               )
-                    rows['Quotazione'].append(      int(l[3]) if l[3] != '-' else 0    )
-                    rows['Partite Giocate'].append( int(l[4]) if l[4] != '-' else 0    )
-                    rows['Goal'].append(            int(l[5]) if l[5] != '-' else 0    )
-                    rows['Assist'].append(          int(l[6]) if l[6] != '-' else 0    )
-                    rows['Ammonizioni'].append(     int(l[7]) if l[7] != '-' else 0    )
-                    rows['Espulsioni'].append(      int(l[8]) if l[8] != '-' else 0    )
-                    rows['Rigori Tirati'].append(   int(l[9]) if l[9] != '-' else 0    )
-                    rows['Rigori Segnati'].append(  int(l[10]) if l[10] != '-' else 0  )
-                    rows['Rigori Sbagliati'].append(int(l[11]) if l[11] != '-' else 0  )
-                    rows['Rigori Parati'].append(   int(l[12]) if l[12] != '-' else 0  )
-                    rows['MV'].append(              float(l[13]) if l[13] != '-' else 0)
-                    rows['MFV'].append(             float(l[14]) if l[14] != '-' else 0)
-                    rows['Bonus/Malus'].append(     float(l[15]) if l[15] != '-' else 0)
-            else:
-                rows['Giocatore'].append(           l[0] + ' ' + l[1] + ' ' + l[2]     )
-                if l[3] == 'T':
-                    rows['Ruolo'].append(           l[3] + l[4]                        )
-                    rows['Quotazione'].append(      int(l[5]) if l[5] != '-' else 0    )
-                    rows['Partite Giocate'].append( int(l[6]) if l[6] != '-' else 0    )
-                    rows['Goal'].append(            int(l[7]) if l[7] != '-' else 0    )
-                    rows['Assist'].append(          int(l[8]) if l[8] != '-' else 0    )
-                    rows['Ammonizioni'].append(     int(l[9]) if l[9] != '-' else 0    )
-                    rows['Espulsioni'].append(      int(l[10]) if l[10] != '-' else 0  )
-                    rows['Rigori Tirati'].append(   int(l[11]) if l[11] != '-' else 0  )
-                    rows['Rigori Segnati'].append(  int(l[12]) if l[12] != '-' else 0  )
-                    rows['Rigori Sbagliati'].append(int(l[13]) if l[13] != '-' else 0  )
-                    rows['Rigori Parati'].append(   int(l[14]) if l[14] != '-' else 0  )
-                    rows['MV'].append(              float(l[15]) if l[15] != '-' else 0)
-                    rows['MFV'].append(             float(l[16]) if l[16] != '-' else 0)
-                    rows['Bonus/Malus'].append(     float(l[17]) if l[17] != '-' else 0)
-                else:
-                    rows['Ruolo'].append(           l[3]                               )
-                    rows['Quotazione'].append(      int(l[4]) if l[4] != '-' else 0    )
-                    rows['Partite Giocate'].append( int(l[5]) if l[5] != '-' else 0    )
-                    rows['Goal'].append(            int(l[6]) if l[6] != '-' else 0    )
-                    rows['Assist'].append(          int(l[7]) if l[7] != '-' else 0    )
-                    rows['Ammonizioni'].append(     int(l[8]) if l[8] != '-' else 0    )
-                    rows['Espulsioni'].append(      int(l[9]) if l[9] != '-' else 0    )
-                    rows['Rigori Tirati'].append(   int(l[10]) if l[10] != '-' else 0  )
-                    rows['Rigori Segnati'].append(  int(l[11]) if l[11] != '-' else 0  )
-                    rows['Rigori Sbagliati'].append(int(l[12]) if l[12] != '-' else 0  )
-                    rows['Rigori Parati'].append(   int(l[13]) if l[13] != '-' else 0  )
-                    rows['MV'].append(              float(l[14]) if l[14] != '-' else 0)
-                    rows['MFV'].append(             float(l[15]) if l[15] != '-' else 0)
-                    rows['Bonus/Malus'].append(     float(l[16]) if l[16] != '-' else 0)
+        # Get Player name:
+        player_name = re.findall(r'^.+?(?=\s[PDCTA]\s)', r)[0]
+        rows['Giocatore'].append(player_name)
+        partial_row = r[len(player_name)+1:]
+        # Get Player Role:
+        player_role = re.findall(r'^[PDCTA]{1}(?:\s\([PCA]\)){0,1}', partial_row)[0]
+        player_role = player_role.replace(' (P)','')
+        rows['Ruolo'].append(player_role)
+        partial_row = partial_row[len(player_role)+1:]
+        # Get all other data:
+        l = partial_row.split(' ')
+        rows['Quotazione'].append(          int(l[0])    if l[0]  != '-' else 0)
+        rows['Partite Giocate'].append(     int(l[1])    if l[1]  != '-' else 0)
+        rows['Goal'].append(                int(l[2])    if l[2]  != '-' else 0)
+        rows['Assist'].append(              int(l[3])    if l[3]  != '-' else 0)
+        rows['Ammonizioni'].append(         int(l[4])    if l[4]  != '-' else 0)
+        rows['Espulsioni'].append(          int(l[5])    if l[5]  != '-' else 0)
+        rows['Rigori Tirati'].append(       int(l[6])    if l[6]  != '-' else 0)
+        rows['Rigori Segnati'].append(      int(l[7])    if l[7]  != '-' else 0)
+        rows['Rigori Sbagliati'].append(    int(l[8])    if l[8]  != '-' else 0)
+        rows['Rigori Parati'].append(       int(l[9])    if l[9]  != '-' else 0)
+        rows['MV'].append(                  float(l[10]) if l[10] != '-' else 0)
+        rows['MFV'].append(                 float(l[11]) if l[11] != '-' else 0)
+        rows['Bonus/Malus'].append(         float(l[12]) if l[12] != '-' else 0)
     df = pd.DataFrame.from_dict(rows)
     return df
 
@@ -212,19 +140,11 @@ def get_actual_players(year:int):
     full_table = driver.find_element(By.TAG_NAME, 'table')
     rows = full_table.text.split('\n')[48:]
     table_blob = full_table.get_attribute("innerHTML").split('\n')
-    team_for_player = [team.replace('\t','')[35:].replace('</span>','').capitalize() for team in table_blob if 'hidden-team-name' in team]
-    role_for_player = [role.replace('\t','')[28:].replace('</td>','').replace(' ', '') for role in table_blob if ('field-ruolo' in role and not 'OLD' in role)][1:]
-    quot_for_player = [int(quot.replace('\t','')[38:].replace('</td>','').replace(' ', '')) for quot in table_blob if 'field-q selectedField' in quot]
     driver.close()
-    players_list = list()
-    for r in rows:
-        l = r.split(' ')
-        if l[1] in ['A', 'C', 'D', 'P', 'T']:
-            players_list.append(l[0])
-        elif l[2] in ['A', 'C', 'D', 'P', 'T']:
-            players_list.append(l[0] + ' ' + l[1])
-        else:
-            players_list.append(l[0] + ' ' + l[1] + ' ' + l[2])
+    players_list    = [re.findall(r'^.+?(?=\s[PDCTA]\s)', r)[0] for r in rows]
+    team_for_player = [team.replace('\t','')[35:].replace('</span>','').capitalize() for team in table_blob if 'hidden-team-name' in team]
+    role_for_player = [role.replace('\t','')[28:].replace('</td>','').replace('(P)','').replace(' ', '') for role in table_blob if ('field-ruolo' in role and not 'OLD' in role)][1:]
+    quot_for_player = [int(quot.replace('\t','')[38:].replace('</td>','').replace(' ', '')) for quot in table_blob if 'field-q selectedField' in quot]
     ret = np.array((players_list, team_for_player, role_for_player, quot_for_player)).T
     return ret
 
@@ -250,7 +170,7 @@ def filter_data(lasty_df:pd.DataFrame, prevy_df:pd.DataFrame, players:list):
                 if col in ('MV', 'MFV'):
                     ly_totv = ly_serie['Partite Giocate'].iloc[0] * ly_serie[col].iloc[0]
                     py_totv = py_serie['Partite Giocate'].iloc[0] * py_serie[col].iloc[0]
-                    res = (ly_totv + py_totv) / (ly_serie['Partite Giocate'].iloc[0] + py_serie['Partite Giocate'].iloc[0])
+                    res = (ly_totv + py_totv) / (ly_serie['Partite Giocate'].iloc[0] + py_serie['Partite Giocate'].iloc[0]) if (ly_totv + py_totv) else 0
                     full_df_dict[col].append(float(f'{res:.2f}'))
                 else:
                     full_df_dict[col].append(ly_serie[col].iloc[0]+py_serie[col].iloc[0])
